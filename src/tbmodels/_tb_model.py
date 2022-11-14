@@ -1149,6 +1149,24 @@ class Model(HDF5Enabled):
             return [la.eigvalsh(ham) for ham in hamiltonians]
         return ty.cast(npt.NDArray[np.float_], la.eigvalsh(hamiltonians))
 
+    def eigvec(self, k: ty.Union[ty.Sequence[float], ty.Sequence[ty.Sequence[float]]]
+    ) -> ty.Union[npt.NDArray[np.float_], ty.List[npt.NDArray[np.float_]]]:
+        """
+        Returns the eigenvectors at a given k point, or list of k-points.
+
+        Parameters
+        ----------
+        k :
+            The k-point at which the Hamiltonian is evaluated. If a list
+            of k-points is given, a corresponding list of eigenvalue
+            arrays is returned.
+        """
+        hamiltonians = self.hamilton(k)
+        if hamiltonians.ndim == 3:
+            return [la.eigh(ham)[1] for ham in hamiltonians]
+        return ty.cast(npt.NDArray[np.float_], la.eigh(hamiltonians)[1])
+
+
     # -------------------MODIFYING THE MODEL ----------------------------#
     def add_hop(
         self,
