@@ -1076,7 +1076,7 @@ class Model(HDF5Enabled):
     def hamilton(
         self,
         k: ty.Union[ty.Sequence[float], ty.Sequence[ty.Sequence[float]]],
-        convention: int = 2,
+        convention: int = 1,
     ) -> npt.NDArray[np.complex_]:
         """
         Calculates the Hamilton matrix for a given k-point or list of
@@ -1093,6 +1093,7 @@ class Model(HDF5Enabled):
             explanation in `the PythTB documentation
             <http://www.physics.rutgers.edu/pythtb/_downloads/pythtb-formalism.pdf>`_ .
             Valid choices are 1 or 2.
+            By default, the convention 1 is taken, as the one used in PythTB package. 
         """
         if convention not in [1, 2]:
             raise ValueError(
@@ -1149,22 +1150,57 @@ class Model(HDF5Enabled):
             return [la.eigvalsh(ham) for ham in hamiltonians]
         return ty.cast(npt.NDArray[np.float_], la.eigvalsh(hamiltonians))
 
-    def eigvec(self, k: ty.Union[ty.Sequence[float], ty.Sequence[ty.Sequence[float]]]
+    def solve_one(
+        self, k: ty.Sequence[float] ) -> npt.NDArray[np.float_]:
+        """
+        Returns the eigenvalues and eigenvectors at a single k point on rows of a matrix, as in PythTB.
+
+        Parameters
+        ----------
+        k :
+            The k-point at which the Hamiltonian is evaluated. 
+        """
+        hamiltonian = self.hamilton(k)
+
+        eigval, eigvec = la.eigh(hamiltonian)
+
+        return eigval, eigvec.T
+
+    def solve_all(self, k: ty.Sequence[ty.Sequence[float]]
+    ) -> ty.List[npt.NDArray[np.float_]]:
+        """
+        Returns the eigenvalues and eigenvectors at a list of k-points, on rows of a matrix, as in PythTB.
+
+        Parameters
+        ----------
+        k :
+            The list of k-points at which the Hamiltonian is evaluated. 
+            The corresponding list of lists with eigenvalues([0]) and eigenvectors matrices([1]) is returned.
+        """
+
+        k_points = k
+        return [self.solve_one(k_i) for k_i in k_points]
+
+
+
+    def diagonalize(self, k: ty.Union[ty.Sequence[float], ty.Sequence[ty.Sequence[float]]]
     ) -> ty.Union[npt.NDArray[np.float_], ty.List[npt.NDArray[np.float_]]]:
         """
-        Returns the eigenvectors at a given k point, or list of k-points.
+        Returns the eigenvalues and eigenvectors at a given k point, or list of k-points.
 
         Parameters
         ----------
         k :
             The k-point at which the Hamiltonian is evaluated. If a list
-            of k-points is given, a corresponding list of eigenvalue
-            arrays is returned.
+            of k-points is given, a corresponding list of lists with eigenvalues([0]) and eigenvectors([1])
+            matrices is returned.
+            Eigenvectors are on columns of the matrix.
         """
+
         hamiltonians = self.hamilton(k)
         if hamiltonians.ndim == 3:
-            return [la.eigh(ham)[1] for ham in hamiltonians]
-        return ty.cast(npt.NDArray[np.float_], la.eigh(hamiltonians)[1])
+            return [la.eigh(ham) for ham in hamiltonians]
+        return  la.eigh(hamiltonians)
 
 
     # -------------------MODIFYING THE MODEL ----------------------------#
